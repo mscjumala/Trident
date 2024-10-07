@@ -29,6 +29,64 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService('RunService')
 local camera = game.Workspace.CurrentCamera
 
+local guntable = {
+	['AR15'] = {
+		['PROJECTSPEED'] = 300,
+		['PROCJECTDROP'] = 3
+	},
+	['Bow'] = {
+		['PROJECTSPEED'] = 300,
+		['PROCJECTDROP'] = 3
+	},
+	['Crossbow'] = {
+		['PROJECTSPEED'] = 450,
+		['PROCJECTDROP'] = 3
+	},
+	['GaussRifle'] = {
+		['PROJECTSPEED'] = 3000,
+		['PROCJECTDROP'] = 2
+	},
+	['EnergyRifle'] = {
+		['PROJECTSPEED'] = 2000,
+		['PROCJECTDROP'] = 1.1
+	},
+	['HMAR'] = {
+		['PROJECTSPEED'] = 1000,
+		['PROCJECTDROP'] = 3.5
+	},
+	['PipePistol'] = {
+		['PROJECTSPEED'] = 500,
+		['PROCJECTDROP'] = 3
+	},
+	['PipeSmg'] = {
+		['PROJECTSPEED'] = 600,
+		['PROCJECTDROP'] = 3
+	},
+	['PumpShotgun'] = {
+		['PROJECTSPEED'] = 600,
+		['PROCJECTDROP'] = 2
+	},
+	['SCAR'] = {
+		['PROJECTSPEED'] = 1300,
+		['PROCJECTDROP'] = 4
+	},
+	['USP9'] = {
+		['PROJECTSPEED'] = 600,
+		['PROCJECTDROP'] = 3
+	},
+	['UZI'] = {
+		['PROJECTSPEED'] = 600,
+		['PROCJECTDROP'] = 3
+	},
+	['RPG'] = {
+		['PROJECTSPEED'] = 700,
+		['PROCJECTDROP'] = 3
+	},
+	['SVD'] = {
+		['PROJECTSPEED'] = 1400,
+		['PROCJECTDROP'] = 2
+	}
+}
 
 -->SETTINGS<--
 
@@ -62,6 +120,14 @@ local ViewModelOriginColor = game.Workspace.Ignore.FPSArms.Fake.c_LeftLowerArm.C
 
 
 -->FUNCTIONS<--
+
+for i,v in pairs(game:GetService('ReplicatedStorage').HandModels:GetChildren()) do
+    local id = Instance.new('StringValue')
+    id.Parent = v 
+    id.Name = 'WEAPONID'
+    id.Value = v.Name
+end 
+
 local function af_IsSleeping(char)
     local tracklist = char.AnimationController.Animator:GetPlayingAnimationTracks()
     for _,v in pairs(tracklist) do
@@ -87,7 +153,17 @@ local function af_GetChars()
     return chars
 end
 
-function notBehindWall(target)
+local function af_GetGun()
+    if game.workspace.Ignore:FindFirstChild('FPSArms') and game.workspace.Ignore.FPSArms:FindFirstChild('HandModel') then
+        local model = game.workspace.Ignore.FPSArms:FindFirstChild('HandModel')
+        local gunid = model:FindFirstChild('WEAPONID')
+        local drop = guntable[gunid.Value]['PROCJECTDROP']
+        local velocity = guntable[gunid.Value]['PROJECTSPEED']
+        return gunid.Value, drop, velocity
+    end
+end
+
+local function notBehindWall(target)
     local ray = Ray.new(game.Workspace.CurrentCamera.CFrame.Position, (target.Position - game.Workspace.CurrentCamera.CFrame.Position)) 
     local part, position = game:GetService("Workspace"):FindPartOnRayWithIgnoreList (ray, {}, false, true) 
     if part then
@@ -95,6 +171,25 @@ function notBehindWall(target)
     else
         return false
     end
+end
+
+local function af_CalculateBulletDrop(tPos,tVel,cPos,pSpeed,pDrop)
+    local dTT = (tPos - cPos).Magnitude
+    local tTT = dTT / pSpeed
+ 
+    local sVE = 8.8 - (pSpeed / (400 + pSpeed / 30))
+
+    local horizontalVel = Vector3.new(tVel.X,0,tVel.Z) * 7
+    local verticalVel = Vector3.new(0,tVel,0) * 2
+
+    local adjustedVel = horizontalVel + verticalVel
+
+    local pTP = tPos + (adjustedVel *tTT)
+
+    local dP = -pDrop ^ (tTT * pDrop) + 1
+    local pPWD = pTP - Vector3.new(0,dP,0)
+
+    return pPWD
 end
 
 -->ESP<--
@@ -414,13 +509,19 @@ end
 
 local function aimAt(target)
     if target then
-        local screenPos = workspace.CurrentCamera:WorldToViewportPoint(target.Position)
-        local screenCenter = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, workspace.CurrentCamera.ViewportSize.Y / 2)
-        local targetDeltaX = screenPos.X - screenCenter.X
-        local targetDeltaY = screenPos.Y - screenCenter.Y
-        local smoothX = targetDeltaX * Smoothing
-        local smoothY = targetDeltaY * Smoothing
-        mousemoverel(smoothX, smoothY)
+        local gun, drop,velocity = af_GetGun()
+        if gun ~= nil then
+            local PredictedPos = af_CalculateBulletDrop(target.Position,target.Velocity,workspace.CurrentCamera.CFrame.Position,velocity,drop)
+
+            local screenPos = workspace.CurrentCamera:WorldToViewportPoint(PredictedPos)
+            local screenCenter = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, workspace.CurrentCamera.ViewportSize.Y / 2)
+            local targetDeltaX = screenPos.X - screenCenter.X
+            local targetDeltaY = screenPos.Y - screenCenter.Y
+            local smoothX = targetDeltaX * Smoothing
+            local smoothY = targetDeltaY * Smoothing
+    
+            mousemoverel(smoothX, smoothY)
+        end
     end
 end
 
@@ -508,30 +609,31 @@ end)
 
 
 RunService.RenderStepped:Connect(function()
-    if ViewModelChanger then
-        for i,v in pairs(game.Workspace.Ignore.FPSArms:GetDescendants()) do
-            if v:IsA('BasePart') then
-                v.Transparency = 0
-                v.Material = Enum.Material.ForceField
-                v.Color = ViewModelColor
-                if v.ClassName == 'MeshPart' then
-                    v.TextureID = 'rbxassetid://1469069950'
+    if game.workspace.Ignore:FindFirstChild('FPSArms') then
+        if ViewModelChanger then
+            for i,v in pairs(game.Workspace.Ignore.FPSArms:GetDescendants()) do
+                if v:IsA('BasePart') then
+                    v.Transparency = 0
+                    v.Material = Enum.Material.ForceField
+                    v.Color = ViewModelColor
+                    if v.ClassName == 'MeshPart' then
+                        v.TextureID = 'rbxassetid://1469069950'
+                    end
                 end
             end
-        end
-    else
-        for i,v in pairs(game.Workspace.Ignore.FPSArms:GetDescendants()) do
-            if v:IsA('BasePart') then
-                v.Transparency = 0
-                v.Material = Enum.Material.SmoothPlastic
-                v.Color = ViewModelOriginColor
-                if v.ClassName == 'MeshPart' then
-                    v.TextureID = ''
+        else
+            for i,v in pairs(game.Workspace.Ignore.FPSArms:GetDescendants()) do
+                if v:IsA('BasePart') then
+                    v.Transparency = 0
+                    v.Material = Enum.Material.SmoothPlastic
+                    v.Color = ViewModelOriginColor
+                    if v.ClassName == 'MeshPart' then
+                        v.TextureID = ''
+                    end
                 end
             end
         end
     end
-
 end)
 
 
