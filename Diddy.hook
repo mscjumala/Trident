@@ -1,0 +1,726 @@
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+
+local Window = Fluent:CreateWindow({
+    Title = "Diddy.hook".. Fluent.Version,
+    SubTitle = "Get better with Diddy",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 460),
+    Acrylic = false, -- The blur may be detectable, setting this to false disables blur entirely
+    Theme = "Darker",
+    MinimizeKey = Enum.KeyCode.RightShift -- Used when theres no MinimizeKeybind
+})
+
+--Fluent provides Lucide Icons https://lucide.dev/icons/ for the tabs, icons are optional
+local Tabs = {
+    Visuals = Window:AddTab({ Title = "Visuals", Icon = "" }),
+    Combat = Window:AddTab({ Title = "Combat", Icon = "" }),
+    Misc = Window:AddTab({ Title = "Misc", Icon = "" }),
+}
+
+local Options = Fluent.Options
+
+
+-->VARIABLES<--
+
+local players = game:GetService('Players')
+local LPlayer = players.LocalPlayer
+local mouse = LPlayer:GetMouse()
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService('RunService')
+local camera = game.Workspace.CurrentCamera
+
+
+-->SETTINGS<--
+
+local FOV = 70
+local BoxEsp = false
+local BoxColor = Color3.new(255,255,255)
+local TracerEsp = false
+local TracerColor = Color3.new(255,255,255)
+local DistanceEsp = false
+local DistanceColor = Color3.new(255,255,255)
+local HealthBarEsp = false
+local HealthBarColor = Color3.new(255,255,255)
+local SleepCheck = false
+
+
+local HitBox = false
+local HitBoxColor = Color3.new(255,255,255)
+local HitBoxWidth = 4
+local HitBoxHeight = 4
+
+local AmbientValue = Color3.new(0.17,0.15,0.15)
+local ClockTimeValue = 12
+local BrightnessValue = 0.5
+local LightingValue = false
+
+local ViewModelChanger = false
+local ViewModelColor = Color3.new(255,255,255)
+local ViewModelOriginColor = game.Workspace.Ignore.FPSArms.Fake.c_LeftLowerArm.Color
+
+
+
+
+-->FUNCTIONS<--
+local function af_IsSleeping(char)
+    local tracklist = char.AnimationController.Animator:GetPlayingAnimationTracks()
+    for _,v in pairs(tracklist) do
+        if v.Animation.AnimationId == 'rbxassetid://13280887764' then
+            return true
+        else
+            return false
+        end
+    end
+end
+
+local function af_GetDistance(part)
+    return (part.Position - workspace.CurrentCamera.CFrame.Position).Magnitude
+end
+
+local function af_GetChars()
+    local chars = {}
+    for i,v in pairs(game.Workspace:GetChildren()) do
+        if v:FindFirstChild('HumanoidRootPart') and v:FindFirstChild('Head') then
+            table.insert(chars,v)
+        end
+    end
+    return chars
+end
+
+function notBehindWall(target)
+    local ray = Ray.new(game.Workspace.CurrentCamera.CFrame.Position, (target.Position - game.Workspace.CurrentCamera.CFrame.Position)) 
+    local part, position = game:GetService("Workspace"):FindPartOnRayWithIgnoreList (ray, {}, false, true) 
+    if part then
+        return true
+    else
+        return false
+    end
+end
+
+-->ESP<--
+
+
+for i,v in pairs(af_GetChars()) do
+    local Box = Drawing.new("Square")
+    Box.Visible = false
+    Box.Color = BoxColor
+    Box.Filled = false
+    Box.Transparency = 1
+    Box.Thickness = 1
+
+    local Tracer = Drawing.new('Line')
+    Tracer.Visible = false
+    Tracer.Color = TracerColor
+    Tracer.Thickness = 1
+    Tracer.Transparency = 1
+
+    local Distance = Drawing.new('Text')
+    Distance.Visible = false
+    Distance.Center = true
+    Distance.Font = 2
+    Distance.Color = DistanceColor
+    Distance.Size = 13
+
+    local HealthBarOutline = Drawing.new("Square")
+    HealthBarOutline.Visible = false
+    HealthBarOutline.Color = HealthBarColor
+    HealthBarOutline.Filled = false
+    HealthBarOutline.Transparency = 1
+    HealthBarOutline.Thickness = 1
+    local HealthBar = Drawing.new("Square")
+    HealthBar.Visible = false
+    HealthBar.Color = Color3.new(0,255,0)
+    HealthBar.Filled = true
+    HealthBar.Transparency = 1
+    HealthBar.Thickness = 1
+
+    function boxesp()
+        RunService.RenderStepped:Connect(function()
+            game.Workspace.CurrentCamera.FieldOfView = FOV
+            if v ~= nil and v:FindFirstChild('Head') ~= nil and v:FindFirstChild('HumanoidRootPart') ~= nil and af_GetDistance(v.HumanoidRootPart) < 2500 then
+                if SleepCheck then
+                    if af_IsSleeping(v) then 
+                        HealthBarOutline.Visible = false
+                        Box.Visible = false
+                        Tracer.Visible = false
+                        Distance.Visible = false
+                        HealthBar.Visible = false
+                        return 
+                    end
+                end
+
+                local Target2dPosition, IsVisible = workspace.CurrentCamera:WorldToViewportPoint(v.HumanoidRootPart.Position)
+                local scale_factor = 1 / (Target2dPosition.Z * math.tan(math.rad(workspace.CurrentCamera.FieldOfView * 0.5)) * 2) * 100
+                local width, height = math.floor(40 * scale_factor), math.floor(62 * scale_factor)
+
+                Tracer.From = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2,workspace.CurrentCamera.ViewportSize.Y / 1)
+                Tracer.To = Vector2.new(Target2dPosition.X,Target2dPosition.Y + Box.Size.Y / 2)
+
+                if IsVisible then
+                    if TracerEsp then
+                        Tracer.Visible = true
+                        Tracer.Color = TracerColor
+                    else
+                        Tracer.Visible = false
+                    end
+                    if BoxEsp then
+                        Box.Color = BoxColor
+                        Box.Visible = true
+                        Box.Size = Vector2.new(width, height)
+                        Box.Position = Vector2.new(Target2dPosition.X - Box.Size.X / 2, Target2dPosition.Y - Box.Size.Y / 2)
+                    else
+                        Box.Visible = false
+                    end
+                    if DistanceEsp then
+                        Distance.Visible = true
+                        Distance.Color = DistanceColor
+                        Distance.Text = tostring(math.floor(af_GetDistance(v.HumanoidRootPart)))
+                        Distance.Position = Vector2.new(Target2dPosition.X,Target2dPosition.Y + Box.Size.Y / 2)
+                    else
+                        Distance.Visible = false
+                    end
+                    if HealthBarEsp then
+                        HealthBarOutline.Size = Vector2.new(Box.Size.X/5,Box.Size.Y)
+                        HealthBarOutline.Visible = true
+                        HealthBarOutline.Position = Vector2.new(Target2dPosition.X-  Box.Size.X / 2,Target2dPosition.Y - Box.Size.Y / 2)
+
+                        HealthBar.Size = Vector2.new(Box.Size.X/5,Box.Size.Y)
+                        HealthBar.Position = Vector2.new(Target2dPosition.X-  Box.Size.X / 2,Target2dPosition.Y - Box.Size.Y / 2 - (1/HealthBar.Size.Y))
+                        HealthBar.Visible = true
+                    else
+                        HealthBarOutline.Visible = false
+                        HealthBar.Visible = false
+                    end
+                else
+                    HealthBarOutline.Visible = false
+                    Box.Visible = false
+                    Tracer.Visible = false
+                    Distance.Visible = false
+                    HealthBar.Visible = false
+                end
+            else
+                HealthBarOutline.Visible = false
+                Box.Visible = false
+                Tracer.Visible = false
+                Distance.Visible = false
+                HealthBar.Visible = false
+            end
+        end)
+    end
+    coroutine.wrap(boxesp)()
+end
+
+game.Workspace.DescendantAdded:Connect(function(v)
+    if v:FindFirstChild('HumanoidRootPart') and v:FindFirstChild('Head') then
+        local Box = Drawing.new("Square")
+        Box.Visible = false
+        Box.Color = BoxColor
+        Box.Filled = false
+        Box.Transparency = 1
+        Box.Thickness = 1
+    
+        local Tracer = Drawing.new('Line')
+        Tracer.Visible = false
+        Tracer.Color = TracerColor
+        Tracer.Thickness = 1
+        Tracer.Transparency = 1
+    
+        local Distance = Drawing.new('Text')
+        Distance.Visible = false
+        Distance.Center = true
+        Distance.Font = 2
+        Distance.Color = DistanceColor
+        Distance.Size = 13
+    
+        local HealthBarOutline = Drawing.new("Square")
+        HealthBarOutline.Visible = false
+        HealthBarOutline.Color = HealthBarColor
+        HealthBarOutline.Filled = false
+        HealthBarOutline.Transparency = 1
+        HealthBarOutline.Thickness = 1
+        local HealthBar = Drawing.new("Square")
+        HealthBar.Visible = false
+        HealthBar.Color = Color3.new(0,255,0)
+        HealthBar.Filled = true
+        HealthBar.Transparency = 1
+        HealthBar.Thickness = 1
+    
+        function boxesp()
+            RunService.RenderStepped:Connect(function()
+                game.Workspace.CurrentCamera.FieldOfView = FOV
+                if v ~= nil and v:FindFirstChild('Head') ~= nil and v:FindFirstChild('HumanoidRootPart') ~= nil and af_GetDistance(v.HumanoidRootPart) < 2500 then
+                    if SleepCheck then
+                        if af_IsSleeping(v) then 
+                            HealthBarOutline.Visible = false
+                            Box.Visible = false
+                            Tracer.Visible = false
+                            Distance.Visible = false
+                            HealthBar.Visible = false
+                            return 
+                        end
+                    end
+    
+                    local Target2dPosition, IsVisible = workspace.CurrentCamera:WorldToViewportPoint(v.HumanoidRootPart.Position)
+                    local scale_factor = 1 / (Target2dPosition.Z * math.tan(math.rad(workspace.CurrentCamera.FieldOfView * 0.5)) * 2) * 100
+                    local width, height = math.floor(40 * scale_factor), math.floor(62 * scale_factor)
+    
+                    Tracer.From = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2,workspace.CurrentCamera.ViewportSize.Y / 1)
+                    Tracer.To = Vector2.new(Target2dPosition.X,Target2dPosition.Y + Box.Size.Y / 2)
+    
+                    if IsVisible then
+                        if TracerEsp then
+                            Tracer.Visible = true
+                            Tracer.Color = TracerColor
+                        else
+                            Tracer.Visible = false
+                        end
+                        if BoxEsp then
+                            Box.Color = BoxColor
+                            Box.Visible = true
+                            Box.Size = Vector2.new(width, height)
+                            Box.Position = Vector2.new(Target2dPosition.X - Box.Size.X / 2, Target2dPosition.Y - Box.Size.Y / 2)
+                        else
+                            Box.Visible = false
+                        end
+                        if DistanceEsp then
+                            Distance.Visible = true
+                            Distance.Color = DistanceColor
+                            Distance.Text = tostring(math.floor(af_GetDistance(v.HumanoidRootPart)))
+                            Distance.Position = Vector2.new(Target2dPosition.X,Target2dPosition.Y + Box.Size.Y / 2)
+                        else
+                            Distance.Visible = false
+                        end
+                        if HealthBarEsp then
+                            HealthBarOutline.Size = Vector2.new(Box.Size.X/5,Box.Size.Y)
+                            HealthBarOutline.Visible = true
+                            HealthBarOutline.Position = Vector2.new(Target2dPosition.X-  Box.Size.X / 2,Target2dPosition.Y - Box.Size.Y / 2)
+    
+                            HealthBar.Size = Vector2.new(Box.Size.X/5,Box.Size.Y)
+                            HealthBar.Position = Vector2.new(Target2dPosition.X-  Box.Size.X / 2,Target2dPosition.Y - Box.Size.Y / 2 - (1/HealthBar.Size.Y))
+                            HealthBar.Visible = true
+                        else
+                            HealthBarOutline.Visible = false
+                            HealthBar.Visible = false
+                        end
+                    else
+                        HealthBarOutline.Visible = false
+                        Box.Visible = false
+                        Tracer.Visible = false
+                        Distance.Visible = false
+                        HealthBar.Visible = false
+                    end
+                else
+                    HealthBarOutline.Visible = false
+                    Box.Visible = false
+                    Tracer.Visible = false
+                    Distance.Visible = false
+                    HealthBar.Visible = false
+                end
+            end)
+        end
+        coroutine.wrap(boxesp)()
+    end
+end)
+
+
+-->HITBOX<--
+
+
+local hitboxlist = {}
+RunService.RenderStepped:Connect(function()
+    for i,v in pairs(hitboxlist) do
+        if v.Name == 'Head' then
+            v.Size = Vector3.new(HitBoxWidth,HitBoxHeight,HitBoxWidth)
+        end
+    end
+    for i,v in pairs(af_GetChars()) do
+        if v:FindFirstChild('F_HB') == nil and v:FindFirstChild('Head') then
+            if HitBox then
+                local Fake_HitBox = Instance.new('Part',v)
+                Fake_HitBox.CFrame = v:FindFirstChild('Head').CFrame
+                Fake_HitBox.Name = 'Head'
+                Fake_HitBox.Size = Vector3.new(HitBoxWidth,HitBoxHeight,HitBoxWidth)
+                Fake_HitBox.Anchored = true
+                Fake_HitBox.CanCollide = false
+                Fake_HitBox.Transparency = 0.5
+                Fake_HitBox.Color = HitBoxColor
+                local subndom = Instance.new("Part",v)
+                subndom.Name = 'F_HB'
+                table.insert(hitboxlist,Fake_HitBox)
+                table.insert(hitboxlist,subndom)
+            end
+        end
+    end
+end)
+
+
+-->LIGHTING<--
+
+
+RunService.RenderStepped:Connect(function()
+    if LightingValue then
+        game.Lighting.Brightness = BrightnessValue
+        game.Lighting.Ambient = AmbientValue
+        game.Lighting.OutdoorAmbient = AmbientValue
+        game.Lighting.ClockTime = ClockTimeValue
+    end
+end)
+
+
+-->AIMLOCK<--
+
+local FOVRadius = 100
+local Smoothing = 0.8
+local aimEnabled = false
+local aimTarget = nil
+local AiMBOT = false
+
+local fovCircle = Drawing.new("Circle")
+fovCircle.Color = Color3.new(1, 1, 1)
+fovCircle.Thickness = 2
+fovCircle.Transparency = 1
+fovCircle.Filled = false
+
+local function updateFOVCircle()
+    local screenCenter = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, workspace.CurrentCamera.ViewportSize.Y / 2)
+    fovCircle.Position = screenCenter
+    fovCircle.Radius = FOVRadius
+end
+
+local function getNearestTarget()
+    local nearestTarget = nil
+    local shortestDistance = FOVRadius  
+    for _, model in pairs(Workspace:GetChildren()) do
+        if model:IsA("Model") then
+            for _, part in pairs(model:GetChildren()) do
+                if part:IsA("BasePart") and part.Name == "Head" then
+                    local screenPos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(part.Position)
+                    if onScreen then
+                        local screenCenter = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, workspace.CurrentCamera.ViewportSize.Y / 2)
+                        local headPos = Vector2.new(screenPos.X, screenPos.Y)
+                        local distancer = (screenCenter - headPos).Magnitude
+                        if tonumber(distancer) < tonumber(shortestDistance) then
+                            shortestDistance = distancer
+                            nearestTarget = part
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    return nearestTarget
+end
+
+local function aimAt(target)
+    if target then
+        local screenPos = workspace.CurrentCamera:WorldToViewportPoint(target.Position)
+        local screenCenter = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, workspace.CurrentCamera.ViewportSize.Y / 2)
+        local targetDeltaX = screenPos.X - screenCenter.X
+        local targetDeltaY = screenPos.Y - screenCenter.Y
+        local smoothX = targetDeltaX * Smoothing
+        local smoothY = targetDeltaY * Smoothing
+        mousemoverel(smoothX, smoothY)
+    end
+end
+
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 and AiMBOT then
+        aimEnabled = true
+        if aimTarget == nil then
+            aimTarget = getNearestTarget()
+        end
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        aimEnabled = false
+        aimTarget = nil
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    updateFOVCircle()
+    
+    if aimEnabled and aimTarget then
+        aimAt(aimTarget)
+    end
+end)
+
+
+-->VisibleBar<--
+
+
+
+
+local isVisibleBoxoutline = Drawing.new('Square')
+isVisibleBoxoutline.Size = Vector2.new(152,5)
+isVisibleBoxoutline.Position = Vector2.new((workspace.CurrentCamera.ViewportSize.X / 2 - 76), (workspace.CurrentCamera.ViewportSize.Y / 2 + 19))
+isVisibleBoxoutline.Color = Color3.new(0,0,0)
+isVisibleBoxoutline.Thickness = 1
+isVisibleBoxoutline.Transparency = 1
+isVisibleBoxoutline.Filled = true
+local isVisibleBox = Drawing.new('Square')
+isVisibleBox.Size = Vector2.new(150,3)
+isVisibleBox.Position = Vector2.new((workspace.CurrentCamera.ViewportSize.X / 2 - 75), (workspace.CurrentCamera.ViewportSize.Y / 2 + 20))
+isVisibleBox.Color = Color3.new(1,0,0)
+isVisibleBox.Thickness = 1
+isVisibleBox.Transparency = 1
+isVisibleBox.Filled = true
+
+local function UpdateVisibleBar()
+	isVisibleBox.Position = Vector2.new((workspace.CurrentCamera.ViewportSize.X / 2 - 75), (workspace.CurrentCamera.ViewportSize.Y / 2 + 20))
+	isVisibleBoxoutline.Position = Vector2.new((workspace.CurrentCamera.ViewportSize.X / 2 - 76), (workspace.CurrentCamera.ViewportSize.Y / 2 + 19))
+end
+
+RunService.RenderStepped:Connect(function()
+    if aimTarget ~= nil then
+        if notBehindWall(aimTarget) == true then
+            isVisibleBox.Color = Color3.new(0,1,0)
+        else
+            isVisibleBox.Color = Color3.new(1,0,0)
+        end
+    else
+        isVisibleBox.Color = Color3.new(1,0,0)
+    end
+end)
+
+
+-->HITSOUND<--
+
+
+game.Workspace.DescendantAdded:Connect(function(part)
+    if part.Name == 'Dink' then
+        local sound = Instance.new('Sound',game.Workspace)
+        sound.SoundId = "rbxassetid://9113804189" 
+        sound.PlaybackSpeed = 1.5
+        sound.Volume = 5
+        sound:Play()
+        wait()
+        wait(sound.TimeLength)
+        sound:Destroy()
+    end
+end)
+
+
+-->VIEWMODEL<--
+
+
+RunService.RenderStepped:Connect(function()
+    if ViewModelChanger then
+        for i,v in pairs(game.Workspace.Ignore.FPSArms:GetDescendants()) do
+            if v:IsA('BasePart') then
+                v.Transparency = 0
+                v.Material = Enum.Material.ForceField
+                v.Color = ViewModelColor
+                if v.ClassName == 'MeshPart' then
+                    v.TextureID = 'rbxassetid://1469069950'
+                end
+            end
+        end
+    else
+        for i,v in pairs(game.Workspace.Ignore.FPSArms:GetDescendants()) do
+            if v:IsA('BasePart') then
+                v.Transparency = 0
+                v.Material = Enum.Material.SmoothPlastic
+                v.Color = ViewModelOriginColor
+                if v.ClassName == 'MeshPart' then
+                    v.TextureID = ''
+                end
+            end
+        end
+    end
+
+end)
+
+
+
+
+do
+    -->VISUALS<--
+
+
+    local BoxToggle = Tabs.Visuals:AddToggle("BoxToggle", {Title = "Box", Default = false })
+    BoxToggle:OnChanged(function()
+        BoxEsp = Options.BoxToggle.Value
+    end)
+    local Colorpicker = Tabs.Visuals:AddColorpicker("Colorpicker", {
+        Title = "Box Color",
+        Default = Color3.fromRGB(255,255,255)
+    })
+    Colorpicker:OnChanged(function()
+        BoxColor = Colorpicker.Value
+    end)
+
+    local TracerToggle = Tabs.Visuals:AddToggle("TracerToggle", {Title = "Tracer", Default = false })
+    TracerToggle:OnChanged(function()
+        TracerEsp = Options.TracerToggle.Value
+    end)
+    local Colorpicker = Tabs.Visuals:AddColorpicker("Colorpicker", {
+        Title = "Tracer Color",
+        Default = Color3.fromRGB(255,255,255)
+    })
+    Colorpicker:OnChanged(function()
+        TracerColor = Colorpicker.Value
+    end)
+
+
+    local DistanceToggle = Tabs.Visuals:AddToggle("DistanceToggle", {Title = "Distance", Default = false })
+    DistanceToggle:OnChanged(function()
+        DistanceEsp = Options.DistanceToggle.Value
+    end)
+    local Colorpicker = Tabs.Visuals:AddColorpicker("Colorpicker", {
+        Title = "Distance Color",
+        Default = Color3.fromRGB(255,255,255)
+    })
+    Colorpicker:OnChanged(function()
+        DistanceColor = Colorpicker.Value
+    end)
+
+    local HealthEsp = Tabs.Visuals:AddToggle("HealthEsp", {Title = "Health Esp", Default = false })
+    HealthEsp:OnChanged(function()
+        HealthBarEsp = Options.HealthEsp.Value
+    end)
+    local Colorpicker = Tabs.Visuals:AddColorpicker("Colorpicker", {
+        Title = "Health Color",
+        Default = Color3.fromRGB(0,255,0)
+    })
+    Colorpicker:OnChanged(function()
+        HealthBarColor = Colorpicker.Value
+    end)
+
+    local SleepToggle = Tabs.Visuals:AddToggle("SleepToggle", {Title = "Sleep Check", Default = false })
+    SleepToggle:OnChanged(function()
+        SleepCheck = Options.SleepToggle.Value
+    end)
+
+    local FOVSlider = Tabs.Visuals:AddSlider("FOVSlider", {
+        Title = "FOV",
+        Description = "Field Of View",
+        Default = 70,
+        Min = 70,
+        Max = 150,
+        Rounding = 10,
+        Callback = function(Value)
+            FOV = Value
+        end
+    })
+
+
+    -->COMBAT<--
+    local AimbotToggle = Tabs.Combat:AddToggle("Aimbot", {Title = "AimLock", Default = false })
+    AimbotToggle:OnChanged(function()
+        AiMBOT = Options.Aimbot.Value
+    end)
+    local FOVRadiusSlider = Tabs.Combat:AddSlider("fovradius", {
+        Title = "Fov",
+        Description = "Fov Radius",
+        Default = 100,
+        Min = 25,
+        Max = 1000,
+        Rounding = 1,
+        Callback = function(Value)
+            FOVRadius = Value
+        end
+    })
+
+    local HbToggle = Tabs.Combat:AddToggle("Hb", {Title = "HitBox", Default = false })
+    HbToggle:OnChanged(function()
+        HitBox = Options.Hb.Value
+        if Options.Hb.Value == false then
+            for i,v in pairs(hitboxlist) do
+                v:Destroy()
+            end
+        end
+    end)
+    local HbWidthSlider = Tabs.Combat:AddSlider("HbWidth", {
+        Title = "Width",
+        Description = "HitBox Width",
+        Default = 3,
+        Min = 1,
+        Max = 10,
+        Rounding = .5,
+        Callback = function(Value)
+            HitBoxWidth = Value
+        end
+    })
+    local HbHeightSlider = Tabs.Combat:AddSlider("HbHeight", {
+        Title = "Width",
+        Description = "HitBox Height",
+        Default = 3,
+        Min = 1,
+        Max = 10,
+        Rounding = .5,
+        Callback = function(Value)
+            HitBoxHeight = Value
+        end
+    })
+    
+
+
+    -->LIGHT<--
+
+    local LightingToggle = Tabs.Misc:AddToggle("LightingToggle", {Title = "Lighting", Default = false })
+    LightingToggle:OnChanged(function()
+        LightingValue = Options.LightingToggle.Value
+    end)
+
+    local Colorpicker = Tabs.Misc:AddColorpicker("Colorpicker", {
+        Title = "Ambient",
+        Default = Color3.fromRGB(0.17,0.15,0.15)
+    })
+    Colorpicker:OnChanged(function()
+        AmbientValue = Colorpicker.Value
+    end)
+
+    local ClockTimeSlider = Tabs.Misc:AddSlider("ClockTimeSlider", {
+        Title = "Clock",
+        Description = "Clock Time",
+        Default = 12,
+        Min = 0,
+        Max = 12,
+        Rounding = 1,
+        Callback = function(Value)
+            ClockTimeValue = Value
+        end
+    })
+
+    local BrightnessSlider = Tabs.Misc:AddSlider("BrightnessSlider", {
+        Title = "Brightness",
+        Description = "Brightness Of The Game",
+        Default = 0.5,
+        Min = 0,
+        Max = 10,
+        Rounding = 0.1,
+        Callback = function(Value)
+            BrightnessValue = Value
+        end
+    })
+
+    local CustomArmsToggle = Tabs.Misc:AddToggle("CustomArmsToggle", {Title = "Custom Arms", Default = false })
+    CustomArmsToggle:OnChanged(function()
+        ViewModelChanger = Options.CustomArmsToggle.Value
+    end)
+    local Colorpicker = Tabs.Misc:AddColorpicker("Colorpicker", {
+        Title = "Arm Color",
+        Default = ViewModelOriginColor
+    })
+    Colorpicker:OnChanged(function()
+        ViewModelColor = Colorpicker.Value
+    end)
+end
+
+
+
+
+Window:SelectTab(1)
+Fluent:Notify({
+    Title = "Diddy.hook",
+    Content = "The script has been loaded.",
+    Duration = 8
+})
+
+
+
+
