@@ -106,7 +106,7 @@ local guntable = {
 	['SVD'] = {
 		['PROJECTSPEED'] = 1400,
 		['PROCJECTDROP'] = 2
-	}
+	},
     ['FlameThrower'] = {
 		['PROJECTSPEED'] = 75,
 		['PROCJECTDROP'] = 0.01
