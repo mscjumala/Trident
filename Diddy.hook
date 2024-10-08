@@ -1,4 +1,6 @@
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
 local Window = Fluent:CreateWindow({
     Title = "Diddy.hook".. Fluent.Version,
@@ -15,6 +17,7 @@ local Tabs = {
     Visuals = Window:AddTab({ Title = "Visuals", Icon = "" }),
     Combat = Window:AddTab({ Title = "Combat", Icon = "" }),
     Misc = Window:AddTab({ Title = "Misc", Icon = "" }),
+    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 
 local Options = Fluent.Options
@@ -35,82 +38,82 @@ local Bottom = LC:FindFirstChild("Bottom")
 local TS = game:GetService('TweenService')
 
 local guntable = {
-	['AR15'] = {
-		['PROJECTSPEED'] = 1300,
-		['PROCJECTDROP'] = 3
-	},
-   	['Blunderbuss'] = {
-		['PROJECTSPEED'] = 600,
-		['PROCJECTDROP'] = 3.5
-	},
-	['Bow'] = {
-		['PROJECTSPEED'] = 300,
-		['PROCJECTDROP'] = 3
-	},
-    	['C9'] = {
-		['PROJECTSPEED'] = 600,
-		['PROCJECTDROP'] = 3
-	},
-	['Crossbow'] = {
-		['PROJECTSPEED'] = 450,
-		['PROCJECTDROP'] = 3
-	},
-	['GaussRifle'] = {
-		['PROJECTSPEED'] = 3000,
-		['PROCJECTDROP'] = 2
-	},
-	['EnergyRifle'] = {
-		['PROJECTSPEED'] = 2000,
-		['PROCJECTDROP'] = 1.1
-	},
-	['HMAR'] = {
-		['PROJECTSPEED'] = 1000,
-		['PROCJECTDROP'] = 3.5
-	},
-    	['LeverActionRifle'] = {
-		['PROJECTSPEED'] = 1200,
-		['PROCJECTDROP'] = 1.5
-	},
-    	['M4A1'] = {
-		['PROJECTSPEED'] = 1300,
-		['PROCJECTDROP'] = 4
-	},
-	['PipePistol'] = {
-		['PROJECTSPEED'] = 500,
-		['PROCJECTDROP'] = 3
-	},
-	['PipeSMG'] = {
-		['PROJECTSPEED'] = 600,
-		['PROCJECTDROP'] = 3
-	},
-	['PumpShotgun'] = {
-		['PROJECTSPEED'] = 600,
-		['PROCJECTDROP'] = 2
-	},
-	['SCAR'] = {
-		['PROJECTSPEED'] = 1300,
-		['PROCJECTDROP'] = 4
-	},
-	['USP9'] = {
-		['PROJECTSPEED'] = 600,
-		['PROCJECTDROP'] = 3
-	},
-	['UZI'] = {
-		['PROJECTSPEED'] = 600,
-		['PROCJECTDROP'] = 3
-	},
-	['RPG'] = {
-		['PROJECTSPEED'] = 700,
-		['PROCJECTDROP'] = 3
-	},
-	['SVD'] = {
-		['PROJECTSPEED'] = 1400,
-		['PROCJECTDROP'] = 2
-	},
-    	['FlameThrower'] = {
-		['PROJECTSPEED'] = 75,
-		['PROCJECTDROP'] = 0.01
-	}
+    ['AR15'] = {
+        ['PROJECTSPEED'] = 1300,
+        ['PROCJECTDROP'] = 3
+    },
+    ['Blunderbuss'] = {
+        ['PROJECTSPEED'] = 600,
+        ['PROCJECTDROP'] = 3.5
+    },
+    ['Bow'] = {
+        ['PROJECTSPEED'] = 300,
+        ['PROCJECTDROP'] = 3
+    },
+    ['C9'] = {
+        ['PROJECTSPEED'] = 600,
+        ['PROCJECTDROP'] = 3
+    },
+    ['Crossbow'] = {
+        ['PROJECTSPEED'] = 450,
+        ['PROCJECTDROP'] = 3
+    },
+    ['GaussRifle'] = {
+        ['PROJECTSPEED'] = 3000,
+        ['PROCJECTDROP'] = 2
+    },
+    ['EnergyRifle'] = {
+        ['PROJECTSPEED'] = 2000,
+        ['PROCJECTDROP'] = 1.1
+    },
+    ['HMAR'] = {
+        ['PROJECTSPEED'] = 1000,
+        ['PROCJECTDROP'] = 3.5
+    },
+    ['LeverActionRifle'] = {
+        ['PROJECTSPEED'] = 1200,
+        ['PROCJECTDROP'] = 1.5
+    },
+    ['M4A1'] = {
+        ['PROJECTSPEED'] = 1300,
+        ['PROCJECTDROP'] = 4
+    },
+    ['PipePistol'] = {
+        ['PROJECTSPEED'] = 500,
+        ['PROCJECTDROP'] = 3
+    },
+    ['PipeSMG'] = {
+        ['PROJECTSPEED'] = 600,
+        ['PROCJECTDROP'] = 3
+    },
+    ['PumpShotgun'] = {
+        ['PROJECTSPEED'] = 600,
+        ['PROCJECTDROP'] = 2
+    },
+    ['SCAR'] = {
+        ['PROJECTSPEED'] = 1300,
+        ['PROCJECTDROP'] = 4
+    },
+    ['USP9'] = {
+        ['PROJECTSPEED'] = 600,
+        ['PROCJECTDROP'] = 3
+    },
+    ['UZI'] = {
+        ['PROJECTSPEED'] = 600,
+        ['PROCJECTDROP'] = 3
+    },
+    ['RPG'] = {
+        ['PROJECTSPEED'] = 700,
+        ['PROCJECTDROP'] = 3
+    },
+    ['SVD'] = {
+        ['PROJECTSPEED'] = 1400,
+        ['PROCJECTDROP'] = 2
+    },
+    ['FlameThrower'] = {
+        ['PROJECTSPEED'] = 75,
+        ['PROCJECTDROP'] = 0.01
+    }
 }
 
 -->SETTINGS<--
@@ -908,9 +911,20 @@ end
 
 
 
+SaveManager:SetLibrary(Fluent)
+InterfaceManager:SetLibrary(Fluent)
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetIgnoreIndexes({})
+InterfaceManager:SetFolder("FluentScriptHub")
+SaveManager:SetFolder("FluentScriptHub/specific-game")
+
+InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+SaveManager:BuildConfigSection(Tabs.Settings)
 Window:SelectTab(1)
 Fluent:Notify({
     Title = "Diddy.hook",
     Content = "The script has been loaded.",
     Duration = 8
 })
+
+SaveManager:LoadAutoloadConfig()
