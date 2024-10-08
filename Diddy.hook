@@ -22,20 +22,33 @@ local Options = Fluent.Options
 
 -->VARIABLES<--
 
+local workspace = game:GetService("Workspace")
 local players = game:GetService('Players')
 local LPlayer = players.LocalPlayer
 local mouse = LPlayer:GetMouse()
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService('RunService')
 local camera = game.Workspace.CurrentCamera
+local Ignore = workspace:FindFirstChild("Ignore")
+local LC = Ignore:FindFirstChild("LocalCharacter")
+local Bottom = LC:FindFirstChild("Bottom")
+local TS = game:GetService('TweenService')
 
 local guntable = {
 	['AR15'] = {
-		['PROJECTSPEED'] = 300,
+		['PROJECTSPEED'] = 1300,
 		['PROCJECTDROP'] = 3
+	},
+    ['Blunderbuss'] = {
+		['PROJECTSPEED'] = 600,
+		['PROCJECTDROP'] = 3.5
 	},
 	['Bow'] = {
 		['PROJECTSPEED'] = 300,
+		['PROCJECTDROP'] = 3
+	},
+    ['C9'] = {
+		['PROJECTSPEED'] = 600,
 		['PROCJECTDROP'] = 3
 	},
 	['Crossbow'] = {
@@ -54,11 +67,19 @@ local guntable = {
 		['PROJECTSPEED'] = 1000,
 		['PROCJECTDROP'] = 3.5
 	},
+    ['LeverActionRifle'] = {
+		['PROJECTSPEED'] = 1200,
+		['PROCJECTDROP'] = 1.5
+	},
+    ['M4A1'] = {
+		['PROJECTSPEED'] = 1300,
+		['PROCJECTDROP'] = 4
+	},
 	['PipePistol'] = {
 		['PROJECTSPEED'] = 500,
 		['PROCJECTDROP'] = 3
 	},
-	['PipeSmg'] = {
+	['PipeSMG'] = {
 		['PROJECTSPEED'] = 600,
 		['PROCJECTDROP'] = 3
 	},
@@ -86,6 +107,10 @@ local guntable = {
 		['PROJECTSPEED'] = 1400,
 		['PROCJECTDROP'] = 2
 	}
+    ['FlameThrower'] = {
+		['PROJECTSPEED'] = 75,
+		['PROCJECTDROP'] = 0.01
+	}
 }
 
 -->SETTINGS<--
@@ -106,6 +131,7 @@ local HitBox = false
 local HitBoxColor = Color3.new(255,255,255)
 local HitBoxWidth = 4
 local HitBoxHeight = 4
+local hitboxlist = {}
 
 local AmbientValue = Color3.new(0.17,0.15,0.15)
 local ClockTimeValue = 12
@@ -116,6 +142,9 @@ local ViewModelChanger = false
 local ViewModelColor = Color3.new(255,255,255)
 local ViewModelOriginColor = game.Workspace.Ignore.FPSArms.Fake.c_LeftLowerArm.Color
 
+local LongNeck = false
+local MaxOGNECK = game.Workspace.Ignore.LocalCharacter.Bottom.PrismaticConstraint.UpperLimit
+local MinOGNECK = game.Workspace.Ignore.LocalCharacter.Bottom.PrismaticConstraint.LowerLimit
 
 
 
@@ -163,15 +192,32 @@ local function af_GetGun()
     end
 end
 
+
+
 local function notBehindWall(target)
-    local ray = Ray.new(game.Workspace.CurrentCamera.CFrame.Position, (target.Position - game.Workspace.CurrentCamera.CFrame.Position)) 
-    local part, position = game:GetService("Workspace"):FindPartOnRayWithIgnoreList (ray, {}, false, true) 
-    if part then
-        return true
+	local RayParams = RaycastParams.new()
+	RayParams.FilterType = Enum.RaycastFilterType.Exclude
+	RayParams.FilterDescendantsInstances = {Ignore,hitboxlist}
+	local RayResult = workspace:Raycast(workspace.CurrentCamera.CFrame.Position,(target.Position - workspace.CurrentCamera.CFrame.Position), RayParams) --Origin, Destination, RayParams 
+	if RayResult then
+        if RayResult.Instance.Parent == target.Parent then   
+            return true
+        end
+
     else
         return false
-    end
+	end
 end
+
+function tweenVariable1(target,twInfo)
+    local elapsed = 0
+    local original = Variable1
+    repeat
+       local alpha = math.clamp(elapsed / twInfo.Time,0,1)
+       Variable1 = original:Lerp(target,TwS:GetValue(alpha,twInfo.EasingStyle,twInfo.EasingDirection))
+       elapsed += task.wait()
+    until alpha == 1
+ end
 
 local function af_CalculateBulletDrop(tPos,tVel,cPos,pSpeed,pDrop)
     local dTT = (tPos - cPos).Magnitude
@@ -191,6 +237,18 @@ local function af_CalculateBulletDrop(tPos,tVel,cPos,pSpeed,pDrop)
 
     return pPWD
 end
+
+-->KEYBINDLIST<--
+
+
+local KEYBINDS = Drawing.new('Text')
+KEYBINDS.Visible = true
+KEYBINDS.Center = true
+KEYBINDS.Font = 2
+KEYBINDS.Color = Color3.new(1,1,1)
+KEYBINDS.Size = 13
+KEYBINDS.Text = 'Sigma'
+
 
 -->ESP<--
 
@@ -420,8 +478,6 @@ end)
 
 -->HITBOX<--
 
-
-local hitboxlist = {}
 RunService.RenderStepped:Connect(function()
     for i,v in pairs(hitboxlist) do
         if v.Name == 'Head' then
@@ -553,37 +609,50 @@ end)
 -->VisibleBar<--
 
 
+local ScreenGui = Instance.new("ScreenGui")
+local BackGround = Instance.new("Frame")
+local Bar = Instance.new("Frame")
+local VISBar = Instance.new('Frame')
+ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.ResetOnSpawn = false
+BackGround.Name = "BackGround"
+BackGround.Parent = ScreenGui
+BackGround.AnchorPoint = Vector2.new(0.5, 0.52)
+BackGround.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+BackGround.BorderColor3 = Color3.fromRGB(0, 0, 0)
+BackGround.BorderSizePixel = 0
+BackGround.Position = UDim2.new(0.5, 0, 0.52, 0)
+BackGround.Size = UDim2.new(0, 152, 0, 5)
+BackGround.ZIndex = 100
+Bar.Name = "Bar"
+Bar.Parent = ScreenGui
+Bar.AnchorPoint = Vector2.new(0.5, 0.52)
+Bar.BackgroundColor3 = Color3.new(1, 0, 0)
+Bar.BorderColor3 = Color3.fromRGB(0, 0, 0)
+Bar.BorderSizePixel = 0
+Bar.Position = UDim2.new(0.5, 0, 0.52, 0)
+Bar.Size = UDim2.new(0, 0, 0, 3)
+Bar.ZIndex = 101
+VISBar.Name = "Bar"
+VISBar.Parent = ScreenGui
+VISBar.AnchorPoint = Vector2.new(0.5, 0.52)
+VISBar.BackgroundColor3 = Color3.new(0, 1, 0)
+VISBar.BorderColor3 = Color3.fromRGB(0, 0, 0)
+VISBar.BorderSizePixel = 0
+VISBar.Position = UDim2.new(0.5, 0, 0.52, 0)
+VISBar.Size = UDim2.new(0, 150, 0, 3)
+VISBar.ZIndex = 102
 
 
-local isVisibleBoxoutline = Drawing.new('Square')
-isVisibleBoxoutline.Size = Vector2.new(152,5)
-isVisibleBoxoutline.Position = Vector2.new((workspace.CurrentCamera.ViewportSize.X / 2 - 76), (workspace.CurrentCamera.ViewportSize.Y / 2 + 19))
-isVisibleBoxoutline.Color = Color3.new(0,0,0)
-isVisibleBoxoutline.Thickness = 1
-isVisibleBoxoutline.Transparency = 1
-isVisibleBoxoutline.Filled = true
-local isVisibleBox = Drawing.new('Square')
-isVisibleBox.Size = Vector2.new(150,3)
-isVisibleBox.Position = Vector2.new((workspace.CurrentCamera.ViewportSize.X / 2 - 75), (workspace.CurrentCamera.ViewportSize.Y / 2 + 20))
-isVisibleBox.Color = Color3.new(1,0,0)
-isVisibleBox.Thickness = 1
-isVisibleBox.Transparency = 1
-isVisibleBox.Filled = true
-
-local function UpdateVisibleBar()
-	isVisibleBox.Position = Vector2.new((workspace.CurrentCamera.ViewportSize.X / 2 - 75), (workspace.CurrentCamera.ViewportSize.Y / 2 + 20))
-	isVisibleBoxoutline.Position = Vector2.new((workspace.CurrentCamera.ViewportSize.X / 2 - 76), (workspace.CurrentCamera.ViewportSize.Y / 2 + 19))
-end
+local tweencolor = TS:Create(Bar,TweenInfo.new(1, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut,-1, false, 0),{BackgroundColor3 = Color3.new(0,1,0)}):Play()
+local tweensize = TS:Create(Bar,TweenInfo.new(1, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut,-1, false, 0),{Size = UDim2.new(0, 150, 0, 3)}):Play()
 
 RunService.RenderStepped:Connect(function()
-    if aimTarget ~= nil then
-        if notBehindWall(aimTarget) == true then
-            isVisibleBox.Color = Color3.new(0,1,0)
-        else
-            isVisibleBox.Color = Color3.new(1,0,0)
-        end
+    if aimTarget ~= nil and notBehindWall(aimTarget) then
+        VISBar.Visible = true
     else
-        isVisibleBox.Color = Color3.new(1,0,0)
+        VISBar.Visible = false
     end
 end)
 
@@ -612,7 +681,7 @@ RunService.RenderStepped:Connect(function()
     if game.workspace.Ignore:FindFirstChild('FPSArms') then
         if ViewModelChanger then
             for i,v in pairs(game.Workspace.Ignore.FPSArms:GetDescendants()) do
-                if v:IsA('BasePart') then
+                if v:IsA('BasePart') and v.Parent ~= 'HandModel' then
                     v.Transparency = 0
                     v.Material = Enum.Material.ForceField
                     v.Color = ViewModelColor
@@ -623,7 +692,7 @@ RunService.RenderStepped:Connect(function()
             end
         else
             for i,v in pairs(game.Workspace.Ignore.FPSArms:GetDescendants()) do
-                if v:IsA('BasePart') then
+                if v:IsA('BasePart') and v.Parent ~= 'HandModel' then
                     v.Transparency = 0
                     v.Material = Enum.Material.SmoothPlastic
                     v.Color = ViewModelOriginColor
@@ -636,6 +705,19 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
+
+-->LONGNECK<--
+
+
+RunService.RenderStepped:Connect(function()
+    if LongNeck then
+        Bottom.PrismaticConstraint.UpperLimit = 7.5
+        Bottom.PrismaticConstraint.LowerLimit = 7.5
+    else
+        Bottom.PrismaticConstraint.UpperLimit = MaxOGNECK
+        Bottom.PrismaticConstraint.LowerLimit = MinOGNECK
+    end
+end)
 
 
 
@@ -811,6 +893,16 @@ do
     Colorpicker:OnChanged(function()
         ViewModelColor = Colorpicker.Value
     end)
+
+    local Keybind = Tabs.Misc:AddKeybind("Keybind", {
+        Title = "Long Neck",
+        Mode = "Toggle",
+        Default = "T",
+
+        Callback = function(Value)
+            LongNeck = Value
+        end,
+    })
 end
 
 
@@ -822,7 +914,3 @@ Fluent:Notify({
     Content = "The script has been loaded.",
     Duration = 8
 })
-
-
-
-
