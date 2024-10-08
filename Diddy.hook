@@ -39,7 +39,7 @@ local guntable = {
 		['PROJECTSPEED'] = 1300,
 		['PROCJECTDROP'] = 3
 	},
-    ['Blunderbuss'] = {
+   	['Blunderbuss'] = {
 		['PROJECTSPEED'] = 600,
 		['PROCJECTDROP'] = 3.5
 	},
@@ -47,7 +47,7 @@ local guntable = {
 		['PROJECTSPEED'] = 300,
 		['PROCJECTDROP'] = 3
 	},
-    ['C9'] = {
+    	['C9'] = {
 		['PROJECTSPEED'] = 600,
 		['PROCJECTDROP'] = 3
 	},
@@ -67,11 +67,11 @@ local guntable = {
 		['PROJECTSPEED'] = 1000,
 		['PROCJECTDROP'] = 3.5
 	},
-    ['LeverActionRifle'] = {
+    	['LeverActionRifle'] = {
 		['PROJECTSPEED'] = 1200,
 		['PROCJECTDROP'] = 1.5
 	},
-    ['M4A1'] = {
+    	['M4A1'] = {
 		['PROJECTSPEED'] = 1300,
 		['PROCJECTDROP'] = 4
 	},
@@ -107,7 +107,7 @@ local guntable = {
 		['PROJECTSPEED'] = 1400,
 		['PROCJECTDROP'] = 2
 	},
-    ['FlameThrower'] = {
+    	['FlameThrower'] = {
 		['PROJECTSPEED'] = 75,
 		['PROCJECTDROP'] = 0.01
 	}
