@@ -115,7 +115,13 @@ local guntable = {
         ['PROCJECTDROP'] = 0.01
     }
 }
-
+local soundtable = {
+    ['Csgo'] = 'rbxassetid://5764885315',
+    ['Headshot'] = 'rbxassetid://7551341361',
+    ['Rust'] = 'rbxassetid://5043539486',
+    ['Custom'] = 'rbxassetid://6905673644',
+    ['BadBussy'] = 'rbxassetid://9368845024'
+}
 -->SETTINGS<--
 
 local FOV = 70
@@ -148,6 +154,10 @@ local ViewModelOriginColor = game.Workspace.Ignore.FPSArms.Fake.c_LeftLowerArm.C
 local LongNeck = false
 local MaxOGNECK = game.Workspace.Ignore.LocalCharacter.Bottom.PrismaticConstraint.UpperLimit
 local MinOGNECK = game.Workspace.Ignore.LocalCharacter.Bottom.PrismaticConstraint.LowerLimit
+
+local KEYBINDLIST = {}
+
+local selectedSound = 'Rust'
 
 
 
@@ -195,8 +205,6 @@ local function af_GetGun()
     end
 end
 
-
-
 local function notBehindWall(target)
 	local RayParams = RaycastParams.new()
 	RayParams.FilterType = Enum.RaycastFilterType.Exclude
@@ -211,16 +219,6 @@ local function notBehindWall(target)
         return false
 	end
 end
-
-function tweenVariable1(target,twInfo)
-    local elapsed = 0
-    local original = Variable1
-    repeat
-       local alpha = math.clamp(elapsed / twInfo.Time,0,1)
-       Variable1 = original:Lerp(target,TwS:GetValue(alpha,twInfo.EasingStyle,twInfo.EasingDirection))
-       elapsed += task.wait()
-    until alpha == 1
- end
 
 local function af_CalculateBulletDrop(tPos,tVel,cPos,pSpeed,pDrop)
     local dTT = (tPos - cPos).Magnitude
@@ -237,20 +235,17 @@ local function af_CalculateBulletDrop(tPos,tVel,cPos,pSpeed,pDrop)
 
     local dP = -pDrop ^ (tTT * pDrop) + 1
     local pPWD = pTP - Vector3.new(0,dP,0)
-
-    return pPWD
+    return pPWD 
 end
-
--->KEYBINDLIST<--
 
 
 local KEYBINDS = Drawing.new('Text')
 KEYBINDS.Visible = true
 KEYBINDS.Center = true
 KEYBINDS.Font = 2
-KEYBINDS.Color = Color3.new(1,1,1)
+KEYBINDS.Color = Color3.new(1,0,0)
 KEYBINDS.Size = 13
-KEYBINDS.Text = 'Sigma'
+KEYBINDS.Text = ''
 
 
 -->ESP<--
@@ -524,10 +519,14 @@ end)
 -->AIMLOCK<--
 
 local FOVRadius = 100
-local Smoothing = 0.8
 local aimEnabled = false
 local aimTarget = nil
 local AiMBOT = false
+local TriggerBot = false
+local previousPosition
+local charvelocity = Vector3.new(0, 0, 0)
+local smoothingFactor = 0.1
+local lastMousePosition = Vector2.new(0, 0)
 
 local fovCircle = Drawing.new("Circle")
 fovCircle.Color = Color3.new(1, 1, 1)
@@ -566,20 +565,38 @@ local function getNearestTarget()
     return nearestTarget
 end
 
-local function aimAt(target)
-    if target then
-        local gun, drop,velocity = af_GetGun()
+local function aimAt(target, deltaTime)
+    if target and target.Parent and target.Parent:FindFirstChild('HumanoidRootPart') then
+        local gun, pDrop, pVel = af_GetGun()
         if gun ~= nil then
-            local PredictedPos = af_CalculateBulletDrop(target.Position,target.Velocity,workspace.CurrentCamera.CFrame.Position,velocity,drop)
+
+            local currentPosition = target.Parent:FindFirstChild('HumanoidRootPart').Position
+            local positionDelta = currentPosition - previousPosition
+            if deltaTime > 0 then
+                velocity = positionDelta / deltaTime
+            end
+            previousPosition = currentPosition
+            print(velocity)
+            local PredictedPos = af_CalculateBulletDrop(target.Position, velocity, workspace.CurrentCamera.CFrame.Position, pVel, pDrop)
 
             local screenPos = workspace.CurrentCamera:WorldToViewportPoint(PredictedPos)
             local screenCenter = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, workspace.CurrentCamera.ViewportSize.Y / 2)
             local targetDeltaX = screenPos.X - screenCenter.X
             local targetDeltaY = screenPos.Y - screenCenter.Y
-            local smoothX = targetDeltaX * Smoothing
-            local smoothY = targetDeltaY * Smoothing
-    
+
+            -- Smooth mouse movement
+            local smoothX = targetDeltaX * smoothingFactor
+            local smoothY = targetDeltaY * smoothingFactor
+
+            -- Update last mouse position
+            lastMousePosition = lastMousePosition + Vector2.new(smoothX, smoothY)
+
             mousemoverel(smoothX, smoothY)
+            if notBehindWall(target) and TriggerBot then
+                mouse1press()  
+                task.wait()
+                mouse1release() 
+            end
         end
     end
 end
@@ -589,6 +606,9 @@ UserInputService.InputBegan:Connect(function(input)
         aimEnabled = true
         if aimTarget == nil then
             aimTarget = getNearestTarget()
+            if aimTarget then
+                previousPosition = aimTarget.Parent:FindFirstChild('HumanoidRootPart').Position
+            end
         end
     end
 end)
@@ -597,14 +617,15 @@ UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton2 then
         aimEnabled = false
         aimTarget = nil
+        lastMousePosition = Vector2.new(0, 0)
     end
 end)
 
-RunService.RenderStepped:Connect(function()
+RunService.RenderStepped:Connect(function(DT)
     updateFOVCircle()
     
     if aimEnabled and aimTarget then
-        aimAt(aimTarget)
+        aimAt(aimTarget,DT)
     end
 end)
 
@@ -666,8 +687,7 @@ end)
 game.Workspace.DescendantAdded:Connect(function(part)
     if part.Name == 'Dink' then
         local sound = Instance.new('Sound',game.Workspace)
-        sound.SoundId = "rbxassetid://9113804189" 
-        sound.PlaybackSpeed = 1.5
+        sound.SoundId = soundtable[selectedSound]
         sound.Volume = 5
         sound:Play()
         wait()
@@ -722,6 +742,12 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
+
+RunService.RenderStepped:Connect(function()
+    local screenCenter = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, workspace.CurrentCamera.ViewportSize.Y / 2)
+    KEYBINDS.Position = screenCenter + Vector2.new(0,50)
+    KEYBINDS.Text = table.concat(KEYBINDLIST, ", ")
+end)
 
 
 do
@@ -811,7 +837,37 @@ do
             FOVRadius = Value
         end
     })
+    local TriggerBind = Tabs.Combat:AddKeybind("TriggerBind", {
+        Title = "Trigger bot",
+        Mode = "Toggle",
+        Default = "Y",
 
+        Callback = function(Value)
+            TriggerBot = Value
+            if Value then
+                table.insert(KEYBINDLIST,'Trigger')
+            else
+                if table.find(KEYBINDLIST,'Trigger') then
+                    for index,value in pairs(KEYBINDLIST) do
+                        if value:match("Trigger") then
+                            table.remove(KEYBINDLIST,index)
+                        end
+                    end
+                end
+            end
+        end,    
+    })
+    local SmoothessSlider = Tabs.Combat:AddSlider("SmoothessSlider", {
+        Title = "Smoothess",
+        Description = "Aimlock Smooth",
+        Default = 0.5,
+        Min = 0,
+        Max = 1,
+        Rounding = 1,
+        Callback = function(Value)
+            smoothingFactor = Value
+        end
+    })
     local HbToggle = Tabs.Combat:AddToggle("Hb", {Title = "HitBox", Default = false })
     HbToggle:OnChanged(function()
         HitBox = Options.Hb.Value
@@ -821,24 +877,24 @@ do
             end
         end
     end)
-    local HbWidthSlider = Tabs.Combat:AddSlider("HbWidth", {
+    local HbWidthSlider = Tabs.Combat:AddSlider("HbWidthSlider", {
         Title = "Width",
         Description = "HitBox Width",
         Default = 3,
         Min = 1,
         Max = 10,
-        Rounding = .5,
+        Rounding = 1,
         Callback = function(Value)
             HitBoxWidth = Value
         end
     })
-    local HbHeightSlider = Tabs.Combat:AddSlider("HbHeight", {
+    local HbHeightSlider = Tabs.Combat:AddSlider("HbHeightSlider", {
         Title = "Width",
         Description = "HitBox Height",
         Default = 3,
         Min = 1,
         Max = 10,
-        Rounding = .5,
+        Rounding = 1,
         Callback = function(Value)
             HitBoxHeight = Value
         end
@@ -879,7 +935,7 @@ do
         Default = 0.5,
         Min = 0,
         Max = 10,
-        Rounding = 0.1,
+        Rounding = 1,
         Callback = function(Value)
             BrightnessValue = Value
         end
@@ -904,8 +960,29 @@ do
 
         Callback = function(Value)
             LongNeck = Value
+            if Value then
+                table.insert(KEYBINDLIST,'Long Neck')
+            else
+                if table.find(KEYBINDLIST,'Long Neck') then
+                    for index,value in pairs(KEYBINDLIST) do
+                        if value:match("Long Neck") then
+                            table.remove(KEYBINDLIST,index)
+                        end
+                    end
+                end
+            end
         end,
     })
+    local sounddrodown = Tabs.Misc:AddDropdown("sounddrodown", {
+        Title = "Hitsoud",
+        Values = {'Csgo','Headshot','Rust','Custom','BadBussy'},
+        Multi = false,
+        Default = 1,
+    })
+    sounddrodown:SetValue("Rust")
+    sounddrodown:OnChanged(function(Value)
+        selectedSound = Value
+    end)
 end
 
 
