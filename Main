@@ -159,6 +159,13 @@ local KEYBINDLIST = {}
 
 local selectedSound = 'Rust'
 
+local crosshair = Drawing.new('Circle') 
+crosshair.Color = Color3.new(1,0,0)
+crosshair.Thickness = 3
+crosshair.Transparency = 1
+crosshair.Filled = true
+crosshair.Radius = 1
+
 
 
 -->FUNCTIONS<--
@@ -226,7 +233,7 @@ local function af_CalculateBulletDrop(tPos,tVel,cPos,pSpeed,pDrop)
  
     local sVE = 8.8 - (pSpeed / (400 + pSpeed / 30))
 
-    local horizontalVel = Vector3.new(tVel.X,0,tVel.Z) * 7
+    local horizontalVel = Vector3.new(tVel.X,0,tVel.Z)
     local verticalVel = Vector3.new(0,tVel,0) * 2
 
     local adjustedVel = horizontalVel + verticalVel
@@ -538,6 +545,7 @@ local function updateFOVCircle()
     local screenCenter = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, workspace.CurrentCamera.ViewportSize.Y / 2)
     fovCircle.Position = screenCenter
     fovCircle.Radius = FOVRadius
+    crosshair.Position = screenCenter
 end
 
 local function getNearestTarget()
